@@ -31,9 +31,9 @@ IMAGE_DIMS = (HEIGHT, WIDTH, CHANNELS)
 N_CLASSES = 4
 TARGETS = ['cappella_s_sebastiano','papa_leone', 'pieta', 'porta_santa']
 
-EPOCHS = 1001
+EPOCHS = 301
 LEARNING_RATE = 1e-3
-BATCH_SIZE = 8
+BATCH_SIZE = 24
 
 class ExhibitDataset(object):
     def __init__(self, path='dataset'):
@@ -45,7 +45,8 @@ class ExhibitDataset(object):
         image_paths = []
         for subdir, dirs, files in os.walk(path):
             for filename in files:
-                if filename.endswith(".png") or filename.endswith(".jpg"):
+                if filename.endswith(".png") or filename.endswith(".jpg")\
+                or filename.endswith(".PNG") or filename.endswith(".JPG"):
                     image_paths.append(os.path.join(subdir, filename))
 
         # Seeding with the same value will give you the same random permutation
@@ -55,7 +56,7 @@ class ExhibitDataset(object):
         print('[LOADED {} IMAGES]'.format(len(image_paths)))
 
         # loop over the input images to properly vectorize them and store labels
-        for path in image_paths[:20]:
+        for path in image_paths:
             #print path
             img = io.imread(path)
             img_resized = transform.resize(img, IMAGE_DIMS)
@@ -73,13 +74,19 @@ class ExhibitDataset(object):
         # partition the data into training and testing splits using 80% of
         # the data for training and the remaining 20% for testing
         self.trainX, self.testX, self.trainY, self.testY = train_test_split(self.images,
-        	self.labels, test_size=0.5, random_state=40)
+        	self.labels, test_size=0.1, random_state=45)
 
-        # print("\nTEST DATA CLASS DISTRIBUTION:")
-        # print("cappella_s_sebastiano: {}".format(len([v for v in self.testY if 'cappella_s_sebastiano' in TARGETS[np.argmax(v)]])))
-        # print("papa_leone: {}".format(len([v for v in self.testY if 'papa_leone' in TARGETS[np.argmax(v)]])))
-        # print("pieta: {}".format(len([v for v in self.testY if 'pieta' in TARGETS[np.argmax(v)]])))
-        # print("porta_santa: {}".format(len([v for v in self.testY if 'porta_santa' in TARGETS[np.argmax(v)]])))
+        print("\nTRAIN DATA CLASS DISTRIBUTION:")
+        print("cappella_s_sebastiano: {}".format(len([v for v in self.trainY if 'cappella_s_sebastiano' in TARGETS[np.argmax(v)]])))
+        print("papa_leone: {}".format(len([v for v in self.trainY if 'papa_leone' in TARGETS[np.argmax(v)]])))
+        print("pieta: {}".format(len([v for v in self.trainY if 'pieta' in TARGETS[np.argmax(v)]])))
+        print("porta_santa: {}".format(len([v for v in self.trainY if 'porta_santa' in TARGETS[np.argmax(v)]])))
+
+        print("\nTEST DATA CLASS DISTRIBUTION:")
+        print("cappella_s_sebastiano: {}".format(len([v for v in self.testY if 'cappella_s_sebastiano' in TARGETS[np.argmax(v)]])))
+        print("papa_leone: {}".format(len([v for v in self.testY if 'papa_leone' in TARGETS[np.argmax(v)]])))
+        print("pieta: {}".format(len([v for v in self.testY if 'pieta' in TARGETS[np.argmax(v)]])))
+        print("porta_santa: {}".format(len([v for v in self.testY if 'porta_santa' in TARGETS[np.argmax(v)]])))
 
         self.train_data_index = 0
         self.test_data_index = 0
@@ -235,7 +242,7 @@ def apply_cnn(x, weights, biases, useBatchNorm=True, useDropout=True):
 # 'Saver' op to save and restore all the variables
 saver = tf.train.Saver()
 
-pred = apply_cnn(x, weights, biases, useBatchNorm=False, useDropout=False)
+pred = apply_cnn(x, weights, biases, useBatchNorm=False, useDropout=True)
 
 pred_probs = tf.nn.softmax(pred)
 
@@ -272,7 +279,7 @@ with tf.Session() as sess:
                 total_cost += c
             avg_cost = total_cost/num_batches
             print "Epoch:", (epoch+1), "cost =", "{:.3f}".format(avg_cost)
-            if(epoch % 5 == 0):
+            if(epoch % 20 == 0):
                 test_x, test_y = ds.get_test_data()
                 acc = sess.run(accuracy, feed_dict={x: test_x, y_: test_y, is_train:False})
                 pre = sess.run(prec_op, feed_dict={x: test_x, y_: test_y, is_train:False})
@@ -297,7 +304,7 @@ with tf.Session() as sess:
         print("-------- RESUMING TRAINING FROM SERIALIZED POINT --------")
 
         # Restore model weights from previously saved model
-        model_path = "serial/PopCNN2.ckpt"
+        model_path = "serial/PopCNN.ckpt"
         saver.restore(sess, model_path)
 
         ds = ExhibitDataset()
@@ -311,10 +318,16 @@ with tf.Session() as sess:
                 total_cost += c
             avg_cost = total_cost/num_batches
             print "Epoch:", (epoch+1), "cost =", "{:.3f}".format(avg_cost)
-            if(epoch % 5 == 0):
+            if(epoch % 20 == 0):
                 test_x, test_y = ds.get_test_data()
                 acc = sess.run(accuracy, feed_dict={x: test_x, y_: test_y, is_train:False})
+                pre = sess.run(prec_op, feed_dict={x: test_x, y_: test_y, is_train:False})
+                rec = sess.run(rec_op, feed_dict={x: test_x, y_: test_y, is_train:False})
+                cm = sess.run(confusion_matrix, feed_dict={x: test_x, y_: test_y, is_train:False})
                 print "Test Accuracy: ", "{:.3f}".format(acc)
+                print "Precision: ", "{:.3f}".format(pre)
+                print "Recall: ", "{:.3f}".format(rec)
+                print prettify_confusion_matrix(cm)
                 # batch_x, batch_y = ds.next_batch_train(BATCH_SIZE)
                 # acc = sess.run(accuracy, feed_dict={x: batch_x, y_: batch_y, is_train:False})
                 # print "Train Accuracy: ", "{:.5f}".format(acc)
@@ -322,10 +335,10 @@ with tf.Session() as sess:
         print "\nTraining complete!"
 
         # Save checkpoint
-        save_path = saver.save(sess, "serial/PopCNN2.ckpt")
+        save_path = saver.save(sess, "serial/PopCNN.ckpt")
         print("Model saved in file: %s" % save_path)
         # Save graph
-        tf.train.write_graph(sess.graph, 'serial', 'PopCNN2.pbtxt')
+        tf.train.write_graph(sess.graph, 'serial', 'PopCNN.pbtxt')
     elif(isTesting):
         # Restore model weights from previously saved model
         model_path = "serial/PopCNN.ckpt"
