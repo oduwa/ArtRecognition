@@ -8,6 +8,16 @@ import skimage
 import PIL
 from PIL import Image
 
+# Provide these to run freeze_graph:
+# Graph definition file, stored as protobuf TEXT
+graph_def_file = 'Serial/PopCNNX.pbtxt'
+# Trained model's checkpoint name
+checkpoint_file = 'Serial/PopCNNX.ckpt'
+# Frozen model's output name
+frozen_model_file = './PopCNN2.pb'
+# Output nodes. If there're multiple output ops, use comma separated string, e.g. "out1,out2".
+output_node_names = 'Softmax'
+
 test_img_path = "/Users/Odie/Documents/Xcode Projects/CoreMLTest/CoreMLTest/Resources/Images/papa1.JPG"
 
 def parse_tf_graph_and_print(pb_path):
@@ -70,17 +80,6 @@ def test_tf_model(pb_path):
                                                 str(tf_out[idx])))
 
 
-
-
-# Provide these to run freeze_graph:
-# Graph definition file, stored as protobuf TEXT
-graph_def_file = 'Serial/PopCNN3.pbtxt'
-# Trained model's checkpoint name
-checkpoint_file = 'Serial/PopCNN3.ckpt'
-# Frozen model's output name
-frozen_model_file = './PopCNN2.pb'
-# Output nodes. If there're multiple output ops, use comma separated string, e.g. "out1,out2".
-output_node_names = 'Softmax'
 
 freeze_graph(input_graph=graph_def_file,
              input_saver="",
